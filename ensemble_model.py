@@ -72,13 +72,14 @@ def xgb_train(train_end = '2016-04-11'):
 if __name__ == '__main__':
     #ans_user_item_pair,pred = xgb_train()
     end = '2016-04-11'
+    
     generate = False
     if generate == True:
         for i in range(7):
             xgb_train(end)
             end = datetime.strptime(end,'%Y-%m-%d') - timedelta(days = 1)
             end = end.strftime('%Y-%m-%d')
-    
+    """
     df = pd.DataFrame()
     for name in os.listdir('./ensemble_set/'):
         file_dir = './ensemble_set/'+name
@@ -87,3 +88,34 @@ if __name__ == '__main__':
         else:
             tmp = pd.read_csv(file_dir)
             df = pd.merge(df,tmp,on = ['user_id','sku_id'])
+    """
+    
+    df = pd.DataFrame()
+    for name in os.listdir('./ensemble_set/'):
+        file_dir = './ensemble_set/'+name
+        ans = pd.read_csv(file_dir)
+        buyed = ans.sort(columns='prob',ascending=False)[:1500]
+        buyed['buyed'] = 1
+        ans = pd.merge(ans,buyed,how='left',on = ['user_id','sku_id','prob'])
+        ans = ans.fillna(0)
+        ans = ans[['user_id','sku_id','prob','buyed']]
+        
+        if df.empty:
+            df = ans
+        else:
+            df = pd.merge(df,ans,on = ['user_id','sku_id'])
+        
+        buy = df.iloc[:,[3,5,7,9,11,13,15]]
+        prob = df.iloc[:,[2,4,6,8,10,12,14]]
+
+    df['sum_pred'] = buy.apply(lambda x:x.sum(),axis = 1)
+    df['sum_prob'] = prob.apply(lambda x:x.sum(),axis = 1)
+        
+    df = df[['user_id','sku_id','sum_pred','sum_prob']]
+    ans = df[df.sum_pred >= 4]
+
+    unique_user_id = ans.groupby('user_id',as_index = False)[['sum_prob']].max()
+    ans = pd.merge(unique_user_id,ans,on = ['user_id','sum_prob'],how = 'left')
+    
+    ans = ans[['user_id','sku_id']]
+    ans['user_id'] = ans['user_id'].astype(int)
