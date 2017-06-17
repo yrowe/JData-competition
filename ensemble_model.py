@@ -55,17 +55,13 @@ def xgb_train(train_end = '2016-04-11'):
     ans_user_item_pair['prob'] = y
     
     ans_user_item_pair.to_csv('./ensemble_set/ans_{}.csv'.format(train_end),index=False)
-    #pred = ans_user_item_pair.sort(columns = 'prob',ascending=False)[:1500]
-    #unique_user_id = pred.groupby('user_id',as_index = False)[['prob']].max()
-    #pred = pd.merge(unique_user_id,pred,on = ['user_id','prob'],how = 'left')
-    #del pred['prob']
-    
-    #pred['user_id'] = pred['user_id'].astype(int)
-    '''
-    if not os.path.exists('./model/xgb_train_end.pkl'):
-        with open('./model/xgb_train_{}.pkl'.format(train_end),'wb') as f:
-            pickle.dump(model,f)
-    '''
+    """
+    pred = ans_user_item_pair.sort(columns = 'prob',ascending=False)[:1000]
+    unique_user_id = pred.groupby('user_id',as_index = False)[['prob']].max()
+    pred = pd.merge(unique_user_id,pred,on = ['user_id','prob'],how = 'left')
+    del pred['prob']
+    pred['user_id'] = pred['user_id'].astype(int)
+    """
     
     return
 
@@ -73,13 +69,13 @@ if __name__ == '__main__':
     #ans_user_item_pair,pred = xgb_train()
     end = '2016-04-11'
     
-    generate = False
+    generate = True
     if generate == True:
         for i in range(7):
             xgb_train(end)
             end = datetime.strptime(end,'%Y-%m-%d') - timedelta(days = 1)
             end = end.strftime('%Y-%m-%d')
-    """
+    
     df = pd.DataFrame()
     for name in os.listdir('./ensemble_set/'):
         file_dir = './ensemble_set/'+name
@@ -88,8 +84,19 @@ if __name__ == '__main__':
         else:
             tmp = pd.read_csv(file_dir)
             df = pd.merge(df,tmp,on = ['user_id','sku_id'])
-    """
+            
+    prob = df.iloc[:,2:]
+    df['sum_prob'] = prob.apply(lambda x:x.sum(),axis=1)
+    df = df[['user_id','sku_id','sum_prob']]
     
+    pred = df.sort(columns = 'sum_prob',ascending=False)[:1000]
+    unique_user_id = pred.groupby('user_id',as_index = False)[['sum_prob']].max()
+    pred = pd.merge(unique_user_id,pred,on = ['user_id','sum_prob'],how = 'left')
+    del pred['sum_prob']
+    pred['user_id'] = pred['user_id'].astype(int)
+   
+    
+    """
     df = pd.DataFrame()
     for name in os.listdir('./ensemble_set/'):
         file_dir = './ensemble_set/'+name
@@ -105,8 +112,8 @@ if __name__ == '__main__':
         else:
             df = pd.merge(df,ans,on = ['user_id','sku_id'])
         
-        buy = df.iloc[:,[3,5,7,9,11,13,15]]
-        prob = df.iloc[:,[2,4,6,8,10,12,14]]
+    buy = df.iloc[:,[3,5,7,9,11,13,15]]
+    prob = df.iloc[:,[2,4,6,8,10,12,14]]
 
     df['sum_pred'] = buy.apply(lambda x:x.sum(),axis = 1)
     df['sum_prob'] = prob.apply(lambda x:x.sum(),axis = 1)
@@ -119,3 +126,4 @@ if __name__ == '__main__':
     
     ans = ans[['user_id','sku_id']]
     ans['user_id'] = ans['user_id'].astype(int)
+    """
